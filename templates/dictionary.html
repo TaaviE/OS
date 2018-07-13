@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="{{ url_for("static", filename="dictionary.js") }}"></script>
+    <script src="https://cdn.ravenjs.com/3.26.2/raven.min.js" crossorigin="anonymous"></script>
+    <title>Dictionary</title>
+    <meta id="csrf" token="{{ csrf_token() }}">
+    <meta id="raven_dsn" token="{{ raven_dsn }}">
+</head>
+<div id="query-box">
+    <form method="get" id="query">
+        Otsitav sõna:<br>
+        <input type="text" id="query-text" value="{{ word }}">
+    </form>
+</div>
+<div id="description">Click on button to start</div>
+<div class="dictionary-content" id="õs">
+    <button id="õs-button">ÕS</button>
+</div>
+<div class="dictionary-content" id="seletav">
+    <button id="seletav-button">Seletav sõnaraamat</button>
+</div>
+<div class="dictionary-content" id="wictionary">
+    <button id="wictionary-button">Wictionary</button>
+</div>
+<div class="dictionary-content" id="murdesõnastik">
+    <button id="murdesõnastik-button">Murdesõnastik</button>
+</div>
+<div class="dictionary-content" id="arvutisõnastik">
+    <button id="arvutisõnastik-button">Arvutisõnastik</button>
+</div>
+<div class="dictionary-content" id="vallaste">
+    <button id="vallaste-button">Vallaste</button>
+</div>
+<div class="dictionary-content" id="lukus">
+    <button id="lukus-button" disabled>Lukus</button>
+</div>
+</body>
+</html>
