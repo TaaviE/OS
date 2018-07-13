@@ -48,7 +48,6 @@ register_signal(sentry)
 register_signal(sentry, ignore_expected=True)
 sentry = Sentry(app, dsn=app.config["SENTRY_DSN"])
 
-
 headers = {"User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Chromium/66.0.3359.181 Safari/537.36",
            "Connection": "keep-alive"}
 # Individual sessions for every page, might need to configure per-site later

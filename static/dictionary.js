@@ -24,7 +24,7 @@ window.onload = function () {
             };
         }
     );
-    document.getElementById("query").onsubmit = function(event) {
+    document.getElementById("query").onsubmit = function (event) {
         event.preventDefault();
         window.location.href = document.getElementById("query-text").value;
         //console.log(document.getElementById("query-text").value);
@@ -54,14 +54,14 @@ function getstatus(this_interval, task_id, dictionary) {
             response.json().then(function (data) {
                 if (data["status"] === "PENDING") {
                     dictionary_state[dictionary] = "PENDING";
-                } else if(data["status"] === "SUCCESS") {
+                } else if (data["status"] === "SUCCESS") {
                     dictionary_state[dictionary] = "SUCCESS";
-                } else if(data["status"] === "WORKING") {
+                } else if (data["status"] === "WORKING") {
                     dictionary_state[dictionary] = "PENDING";
                 }
 
                 let result = data["state"]["result"];
-                if(result === undefined){
+                if (result === undefined) {
                     result = data["state"];
                 }
                 document.getElementById(dictionary).innerHTML = result;
@@ -69,7 +69,7 @@ function getstatus(this_interval, task_id, dictionary) {
                 console.log(data);
             });
 
-            if(dictionary_state["status"] === "SUCCESS") {
+            if (dictionary_state["status"] === "SUCCESS") {
                 window.clearInterval(this_interval);
             }
         }).catch(function (error) {
