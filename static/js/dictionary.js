@@ -12,6 +12,7 @@ let dictionary_state = {
 window.onload = function () {
     //Raven.config('https://f4d6e7fa2877472ba05d020d1d1b1947@sentry.io/1242105').install();
     Raven.config(document.getElementById("raven_dsn").getAttribute("token")).install();
+    let current_word = window.location.pathname.substr(1);
 
     csrf_token = document.getElementById("csrf").getAttribute("token");
 
@@ -20,7 +21,7 @@ window.onload = function () {
         function (element) {
             element.onclick = function () {
                 console.log(window.location.pathname);
-                onbuttonclick(element.id, window.location.pathname.substr(1));
+                onbuttonclick(element.id, current_word);
             };
         }
     );
@@ -28,7 +29,10 @@ window.onload = function () {
         event.preventDefault();
         window.location.href = document.getElementById("query-text").value;
         //console.log(document.getElementById("query-text").value);
-    }
+    };
+
+    onbuttonclick("õs", current_word);
+    onbuttonclick("seletav", current_word);
 };
 
 function handleRouteError(err) {
@@ -64,7 +68,16 @@ function getstatus(this_interval, task_id, dictionary) {
                 if (result === undefined) {
                     result = data["state"];
                 }
-                document.getElementById(dictionary).innerHTML = result;
+                if (Array.isArray(result)) {
+                    document.getElementById(dictionary).innerHTML = "";
+                    result.forEach(function (element) {
+                        document.getElementById(dictionary).innerHTML += "<li>" + element + "</li>";
+                    });
+                } else if (result === "") {
+                    document.getElementById(dictionary).innerHTML = "Tulemusi ei leitud";
+                } else {
+                    document.getElementById(dictionary).innerHTML = result;
+                }
                 document.getElementById(dictionary).onclick = null;
                 console.log(data);
             });

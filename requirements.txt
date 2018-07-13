@@ -16,4 +16,3 @@ redis
 beautifulsoup4
 requests
 raven
-django
