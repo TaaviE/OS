@@ -68,6 +68,7 @@ window.onload = function () {
             onbuttonclick("vallaste", current_word);
             onbuttonclick("arvutisõnastik", current_word);
         }
+        document.getElementById("buttoncontainer").style.display = ""
     } else {
         document.getElementById("buttoncontainer").style.display = "none"
     }
@@ -116,6 +117,7 @@ function reset_and_new_search(word) {
     if (current_word === "") {
         document.getElementById("buttoncontainer").style.display = "none";
     } else {
+        document.getElementById("buttoncontainer").style.display = "";
         onbuttonclick("õs", current_word);
         onbuttonclick("seletav", current_word);
     }

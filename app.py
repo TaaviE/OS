@@ -71,7 +71,7 @@ for name, session in sessions.items():
     session.headers = headers
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="10/s")
 def os_task(self, word):
     """Task that fetches results from ÕS"""
     html = sessions["õs"].get("http://www.eki.ee/dict/qs/index.cgi?F=M&Q=" + word).content
@@ -147,7 +147,7 @@ def highlight_word_in_html(html, word):
     return str(html).replace(word, "<span class=\"highlight-word\">" + word + "</span>")
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="10/s")
 def seletav_task(self, word):
     """Task that fetches results from SS"""
     html = sessions["seletav"].get("https://www.eki.ee/dict/ekss/index.cgi?F=M&Q=" + word).content
@@ -183,7 +183,7 @@ def seletav_task(self, word):
     return {"progress": 100, "count": amount, "result": clean_results}
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="60/s")
 def wictionary_task(self, word):
     """Task that fetches Wictionary"""
     count = 1
@@ -216,7 +216,7 @@ def wictionary_task(self, word):
     return {"progress": 100, "count": count, "result": result}
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="10/s")
 def murdesonastik_task(self, word):
     """Task that fetches MS"""
     html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
@@ -244,7 +244,7 @@ def murdesonastik_task(self, word):
     return {"progress": 100, "count": amount, "result": clean_results}
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="5/s")
 def vallaste_task(self, word):
     """Task that fetches Vallaste"""
     search_html = sessions["vallaste"].post("http://www.vallaste.ee/list.asp",
@@ -291,7 +291,7 @@ def vallaste_task(self, word):
     return {"progress": 100, "count": len(selected_links), "result": clean_result}
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, rate_limit="10/s")
 def arvutisonastik_task(self, word):
     """Task that fetches arvutisõnastik"""
     html = sessions["arvutisõnastik"].get(
