@@ -7,81 +7,105 @@
     <link rel="stylesheet" href="{{ url_for("static", filename="css/normalize.css") }}">
     <link rel="stylesheet" href="{{ url_for("static", filename="css/skeleton.css") }}">
     <script src="https://cdn.ravenjs.com/3.26.2/raven.min.js" crossorigin="anonymous"></script>
-    <title>Dictionary</title>
+    <title>"{{ word }}" - Sõnaraamatutes</title>
     <meta id="csrf" token="{{ csrf_token() }}">
     <meta id="raven_dsn" token="{{ raven_dsn }}">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
 <body>
-<div class="container">
+<div id="container" class="container">
     <section class="header">
         <h2 class="title">Sõnaraamat</h2>
-        <div class="value-props row">
-            Veebiteenus sõnaraamatute info ühendamiseks
+        <div class="row">
+            Veebiteenus erinevates internetisõnaraamatutes leiduva info kokku kogumiseks
         </div>
     </section>
     <div class="navbar-spacer"></div>
 
-    <nav class="navbar">
-        <div class="container">
-        </div>
-    </nav>
+    <div id="query-box" class="query-box">
+        <noscript>
+            <form method="get" class="row white-bg" id="form">
+                <div>Kasutad puudulikku brauserit, säh:</div>
+                <div class="row">
+                    <input class="columns ten" type="text" id="word" value="{{ word }}">
+                    <input class="columns two button-primary" type="submit" value="Otsi">
+                </div>
+            </form>
+        </noscript>
 
-    <div id="query-box">
-        <form method="get" id="query">
-            Otsitav sõna:<br>
-            <input type="text" id="query-text" value="{{ word }}">
-        </form>
+        <div id="fallback-form"></div>
+        <div class="row white-bg" id="query">
+            <input class="columns ten" type="text" id="query-text" value="{{ word }}">
+            <button class="columns two button-primary" id="query-submit">Otsi</button>
+        </div>
     </div>
+
     <div class="navbar-spacer"></div>
 
-    <div>
-        <div>Õigekeelsussõnaraamat:</div>
-        <ul class="dictionary-content" id="õs">
-            <button id="õs-button">ÕS</button>
-        </ul>
-    </div>
+    <div id="buttoncontainer">
+        <div>
+            <div>Õigekeelsussõnaraamat:</div>
+            <ul class="dictionary-content" id="õs">
+                <button id="õs-button">ÕS</button>
+            </ul>
+            <a href="https://www.eki.ee/dict/qs/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
+        </div>
 
-    <div class="row">
-        <div>Seletav sõnaraamat:</div>
-        <ul class="dictionary-content" id="seletav">
-            <button id="seletav-button">Seletav sõnaraamat</button>
-        </ul>
-    </div>
+        <div class="row">
+            <div>Seletav sõnaraamat:</div>
+            <ul class="dictionary-content" id="seletav">
+                <button id="seletav-button">Otsi</button>
+            </ul>
+            <a href="https://www.eki.ee/dict/ekss/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
+        </div>
 
-    <div class="row">
-        <div>Wictionary:</div>
-        <ul class="dictionary-content" id="wictionary">
-            <button id="wictionary-button">Wictionary</button>
-        </ul>
-    </div>
+        <div class="row">
+            <div>Wictionary:</div>
+            <ul class="dictionary-content" id="wictionary">
+                <button id="wictionary-button">Otsi</button>
+            </ul>
+            <a href="https://et.wiktionary.org/" class="copyright black" rel="nofollow">Wictionary vabatahtlikud©</a>
+        </div>
 
-    <div class="row">
-        <div>Murdesõnastik:</div>
-        <ul class="dictionary-content" id="murdesõnastik">
-            <button id="murdesõnastik-button">Murdesõnastik</button>
-        </ul>
-    </div>
+        <div class="row">
+            <div>Murdesõnastik:</div>
+            <ul class="dictionary-content" id="murdesõnastik">
+                <button id="murdesõnastik-button">Otsi</button>
+            </ul>
+            <a href="https://www.eki.ee/dict/ems/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
+        </div>
 
-    <div class="row">
-        <div>Arvutisõnastik:</div>
-        <ul class="dictionary-content" id="arvutisõnastik">
-            <button id="arvutisõnastik-button">Arvutisõnastik</button>
-        </ul>
-    </div>
+        <div class="row">
+            <div>Arvutisõnastik:</div>
+            <ul class="dictionary-content" id="arvutisõnastik">
+                <button id="arvutisõnastik-button">Otsi</button>
+            </ul>
+            <a href="http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?" class="copyright black" rel="nofollow">L.Liikane,
+                M.Kesa©</a>
+        </div>
 
-    <div class="row">
-        <div>Vallaste:</div>
-        <ul class="dictionary-content" id="vallaste">
-            <button id="vallaste-button">Vallaste</button>
-        </ul>
-    </div>
+        <div class="row">
+            <div>Vallaste:</div>
+            <ul class="dictionary-content" id="vallaste">
+                <button id="vallaste-button">Otsi</button>
+            </ul>
+            <a href="http://vallaste.ee" class="copyright black" rel="nofollow">Heikki Vallaste©</a>
+        </div>
 
-    <div class="row">
-        <div>Lukus:</div>
-        <ul class="dictionary-content" id="lukus">
-            <button id="lukus-button" disabled>Lukus</button>
-        </ul>
+        <div class="row">
+            <div>Lukus:</div>
+            <ul class="dictionary-content" id="lukus">
+                <button id="lukus-button" disabled>Lukus</button>
+            </ul>
+            <a href="" class="copyright black" rel="nofollow">©</a>
+        </div>
     </div>
+    <nav class="footer">
+        <a class="black" id="about" href="./about">Teenusest</a>
+        <a class="black" href="https://github.com/TaaviE/OS">Lähtekood</a>
+        <a class="black" id="contact" href="#">Kontakt</a>
+        <a class="black" id="report" href="#">Teavita veast</a>
+    </nav>
 </div>
 </body>
 </html>

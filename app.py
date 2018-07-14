@@ -17,11 +17,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import pyximport
 
+pyximport.install()
 from raven import Client
 from config import Config
-
 sentry = Client(Config.SENTRY_DSN)
+
 from logging import INFO
 from re import sub, compile
 from flask import Flask, jsonify, render_template
@@ -32,11 +34,19 @@ from requests import Session
 from raven.contrib.celery import register_signal, register_logger_signal
 from raven.contrib.flask import Sentry
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 app = Flask(__name__)
 app.config.from_object("config.Config")
 
+limiter = Limiter(app, key_func=get_remote_address)
+
 celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
+
+# from werkzeug.contrib.fixers import ProxyFix  # Enable if you're proxying
+# app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -151,6 +161,11 @@ def seletav_task(self, word):
     # print(html)
     soup = BeautifulSoup(html, "html.parser")
     amount = soup.find_all("p", {"class": "inf"})[0].get_text()
+    if "Päring ei andnud tulemusi!" in amount:
+        amount = 0
+        return {"progress": 100, "count": amount, "result": ""}
+    else:
+        amount = amount.split(" ")[1]
     self.update_state(state="PROGRESS",
                       meta={"progress": 75,
                             "result": "Töötlen tulemust"}
@@ -212,6 +227,11 @@ def murdesonastik_task(self, word):
                             "result": "Töötlen tulemust"}
                       )
     amount = soup.find_all("p", {"class": "inf"})[0].get_text()
+    if "Päring ei andnud tulemusi!" in amount:
+        amount = 0
+        return {"progress": 100, "count": amount, "result": ""}
+    else:
+        amount = amount.split(" ")[1]
     results = soup.find_all("div", {"class": "tervikart"})
     clean_results = []
 
@@ -291,7 +311,7 @@ def arvutisonastik_task(self, word):
     return {"progress": 100, "count": 0, "result": clean_results}
 
 
-# For easier task lookup
+# This made for easier task lookup
 dictionary_tasks = {"õs": os_task,
                     "seletav": seletav_task,
                     "wictionary": wictionary_task,
@@ -303,6 +323,7 @@ dictionary_tasks = {"õs": os_task,
 dictionaries = dictionary_tasks.keys()
 
 
+@limiter.limit("3600/day;60/minute")
 @app.route("/start/<dictionary>/<word>", methods=["POST", "GET"])
 def dictionary_lookup(dictionary, word):
     if dictionary in dictionaries:
@@ -351,7 +372,9 @@ def task_status(dictionary, task_id):
             "state": "Tekkis viga",
         }
 
-    return jsonify(response)
+    response = jsonify(response)
+    task.forget()
+    return response
 
 
 @app.route("/")
@@ -362,6 +385,11 @@ def index(word=""):
         empty = True
 
     return render_template("dictionary.html", empty=empty, word=word, raven_dsn=Config.SENTRY_PUBLIC_DSN)
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 
 if __name__ == "__main__":

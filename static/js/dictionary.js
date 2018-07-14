@@ -20,24 +20,105 @@ window.onload = function () {
     Array.prototype.forEach.call(dictionary_content,
         function (element) {
             element.onclick = function () {
-                console.log(window.location.pathname);
+                console.log(current_word);
                 onbuttonclick(element.id, current_word);
             };
         }
     );
+
+    if (!fetch) { // Let's fall back to get if someone is using some ancient or just a snowflake browser
+        let fallback_form = document.getElementById("fallback-form");
+        let form = document.getElementById("form");
+        form.innerHTML = fallback_form.innerHTML
+    }
+
     document.getElementById("query").onsubmit = function (event) {
         event.preventDefault();
         window.location.href = document.getElementById("query-text").value;
         //console.log(document.getElementById("query-text").value);
     };
 
-    onbuttonclick("õs", current_word);
-    onbuttonclick("seletav", current_word);
+    let search_bar = document.getElementById("query-box");
+    let search_bar_container = document.getElementById("container");
+    let search_bar_offset = search_bar.offsetTop;
+
+    function navbarhandler() {
+        if (window.pageYOffset < search_bar_offset) {
+            search_bar.classList.remove("sticky");
+        } else {
+            search_bar.classList.add("sticky");
+            search_bar.style.width = search_bar_container.getBoundingClientRect().width + "px";
+        }
+    }
+
+    window.onscroll = navbarhandler;
+
+    let search_button = document.getElementById("query-submit");
+    search_button.onclick = function () {
+        window.scrollTo(0, document.getElementById("query-box").offsetTop);
+        reset_and_new_search(document.getElementById("query-text").value);
+    };
+
+    if (current_word !== "") {
+        onbuttonclick("õs", current_word);
+        onbuttonclick("seletav", current_word);
+        if (navigator.userAgent.includes("Googlebot")) {
+            onbuttonclick("wiktionary", current_word);
+            onbuttonclick("murdesõnastik", current_word);
+            onbuttonclick("vallaste", current_word);
+            onbuttonclick("arvutisõnastik", current_word);
+        }
+    } else {
+        document.getElementById("buttoncontainer").style.display = "none"
+    }
+
+    let report_button = document.getElementById("report");
+    report_button.onclick = function () {
+        handle_error();
+    };
+
+    let contact_button = document.getElementById("contact");
+    contact_button.onclick = function () {
+        handle_error();
+    };
 };
 
-function handleRouteError(err) {
-    Raven.captureException(err);
+function handle_error(error) {
+    Raven.captureException(error);
     Raven.showReportDialog();
+}
+
+function reset_and_new_search(word) {
+    let current_word = word;
+    history.pushState({}, "\"" + word + "\" - Sõnaraamatutes", "https://heak.ovh/" + word); // Change URL
+
+    dictionary_state = { // Reset download status
+        "õs": "EMPTY",
+        "seletav": "EMPTY",
+        "wictionary": "EMPTY",
+        "murdesõnastik": "EMPTY",
+        "vallaste": "EMPTY",
+        "arvutisõnastik": "EMPTY",
+        "lukus": "EMPTY",
+    };
+
+    let dictionary_content = document.getElementsByClassName("dictionary-content");
+    Array.prototype.forEach.call(dictionary_content, // Reattach onclick listeners
+        function (element) {
+            element.innerHTML = "<button>Otsi</button>";
+            element.onclick = function () {
+                console.log(current_word);
+                onbuttonclick(element.id, current_word);
+            };
+        }
+    );
+
+    if (current_word === "") {
+        document.getElementById("buttoncontainer").style.display = "none";
+    } else {
+        onbuttonclick("õs", current_word);
+        onbuttonclick("seletav", current_word);
+    }
 }
 
 function getstatus(this_interval, task_id, dictionary) {
@@ -96,6 +177,7 @@ function getstatus(this_interval, task_id, dictionary) {
 }
 
 function onbuttonclick(dictionary, word) {
+    console.log("Fetching word: " + word);
     fetch("/start/" + dictionary + "/" + word, {
         method: "GET",
         headers: {
@@ -125,7 +207,7 @@ function registerjobstatuschecker(task_id, dictionary) {
                     getstatus(this_interval, task_id, dictionary);
                 }, 100);
                 dictionary_state[dictionary] = "PENDING";
-            }, 10);
+            }, 250);
         }
     } else {
         console.log("Starting task failed!");
