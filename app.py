@@ -132,6 +132,10 @@ def remove_tags_and_beautify(html):
 
 def strip_wiki_tags(html):
     html = str(html)
+    tag_strip_regex = compile(r"[[(.*?)]]")
+    while ("[[" in html) and ("]]" in html):
+        html = sub(tag_strip_regex, "", html)
+
     tag_strip_regex = compile(r"{{(.*?)}}")  # Remove tags
     while ("{{" in html) and ("}}" in html):
         html = sub(tag_strip_regex, "", html)
