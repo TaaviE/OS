@@ -1,0 +1,47 @@
+.bold-word {
+    font-weight: bold;
+}
+
+.highlight-word {
+    background-color: #ffd000
+}
+
+.italic-word {
+    font-weight: lighter;
+}
+
+.tüüpsõna-word {
+    font-weight: lighter;
+}
+
+.white-bg {
+    background-color: #FFFFFF;
+}
+
+.query-box {
+    padding: 0;
+}
+
+.sticky {
+    position: fixed;
+    top: 0;
+    box-shadow: -10px 5px 10px white;
+}
+
+.sticky + .navbar-spacer {
+    padding-top: 52px;
+}
+
+a.copyright {
+    text-align: right;
+    float: right;
+}
+
+a.black {
+    color: #222;
+    text-decoration: none;
+}
+
+html {
+    scroll-behavior: smooth;
+}
