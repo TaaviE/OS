@@ -351,7 +351,7 @@ dictionaries = dictionary_tasks.keys()
 @app.route("/start/<dictionary>/<word>", methods=["POST", "GET"])
 def dictionary_lookup(dictionary, word):
     if dictionary in dictionaries:
-        task = dictionary_tasks[dictionary].apply_async(args=(word,), task_id=word)
+        task = dictionary_tasks[dictionary].apply_async(args=(word,), task_id=dictionary+"-"+word)
         return jsonify({"task_id": task.id})
     else:
         return jsonify({"task_id": ""})
@@ -410,12 +410,12 @@ def index(word=""):
 
     if "Googlebot" in request.headers.get("User-Agent") or "YandexBot" in request.headers.get("User-Agent"):
         return render_template("dictionary-google.html",
-                               os=(os_task.apply_async(args=(word,), task_id=word).get())["result"],
-                               ss=(seletav_task.apply_async(args=(word,), task_id=word).get())["result"],
-                               wictionary=(wictionary_task.apply_async(args=(word,), task_id=word).get())["result"],
-                               ms=(murdesonastik_task.apply_async(args=(word,), task_id=word).get())["result"],
-                               ars=(arvutisonastik_task.apply_async(args=(word,), task_id=word).get())["result"],
-                               vallaste=(vallaste_task.apply_async(args=(word,), task_id=word).get())["result"],
+                               os=(os_task.apply_async(args=(word,), task_id="õs-"+word).get())["result"],
+                               ss=(seletav_task.apply_async(args=(word,), task_id="seletav-"+word).get())["result"],
+                               wictionary=(wictionary_task.apply_async(args=(word,), task_id="wictionary-"+word).get())["result"],
+                               ms=(murdesonastik_task.apply_async(args=(word,), task_id="murdesõnastik-"+word).get())["result"],
+                               ars=(arvutisonastik_task.apply_async(args=(word,), task_id="arvutisõnastik-"+word).get())["result"],
+                               vallaste=(vallaste_task.apply_async(args=(word,), task_id="vallaste-"+word).get())["result"],
                                empty=empty,
                                word=word,
                                raven_dsn=Config.SENTRY_PUBLIC_DSN)
@@ -428,11 +428,11 @@ def about():
     return render_template("about.html")
 
 
-@app.after_request
-def add_header(response):
-    response.cache_control.max_age = 31536000
-    response.cache_control.public = True
-    return response
+#@app.after_request
+#def add_header(response):
+#    response.cache_control.max_age = 31536000
+#    response.cache_control.public = True
+#    return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0")
