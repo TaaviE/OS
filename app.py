@@ -47,8 +47,8 @@ limiter = Limiter(app, key_func=get_remote_address)
 celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
 
-# from werkzeug.contrib.fixers import ProxyFix  # Enable if you're proxying
-# app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
+from werkzeug.contrib.fixers import ProxyFix  # Enable if you're proxying
+app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
