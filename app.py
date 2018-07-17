@@ -234,7 +234,7 @@ def wictionary_task(self, word):
     return {"progress": 100, "count": count, "result": result}
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=15, time_limit=20)
 def murdesonastik_task(self, word):
     """Task that fetches MS"""
     html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
