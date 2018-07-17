@@ -414,18 +414,19 @@ def index(word=""):
         results = {}
         for dictionary_name, dictionary_task in dictionary_tasks.items():
             status = 0
-            while not status == 1 or not status == -2:
+            while 1 > status > -2:
                 try:
                     result = dictionary_task.apply_async(args=(word,), task_id=dictionary_name + "-" + word).get()
                     if len(result) > 0 and len(result["result"]) > 0:
                         result = str(result["result"])
                     else:
                         result = ""
+
                     results[dictionary_name] = result
-                    status = 1
+                    status = status + 1
                 except Exception as e:
                     sentry.captureException(e)
-                    status -= 1
+                    status = status - 1
 
         return render_template("dictionary.html",
                                os=results["õs"],
