@@ -210,7 +210,7 @@ def wictionary_task(self, word):
                             "result": "Parsing result"}
                       )
 
-    translation_start_string = "#:'''Tõlked''':"
+    translation_start_string = "#:'''Tõlked''':"  # TODO: Not always in proper order
     location_translation_start = html.find(translation_start_string)
     if location_translation_start == -1:
         location_translation_start = html.find("====Tõlked====")
@@ -408,14 +408,32 @@ def index(word=""):
     if word is "":
         empty = True
 
-    if "Googlebot" in request.headers.get("User-Agent") or "YandexBot" in request.headers.get("User-Agent"):
-        return render_template("dictionary-google.html",
-                               os=(os_task.apply_async(args=(word,), task_id="õs-"+word).get())["result"],
-                               ss=(seletav_task.apply_async(args=(word,), task_id="seletav-"+word).get())["result"],
-                               wictionary=(wictionary_task.apply_async(args=(word,), task_id="wictionary-"+word).get())["result"],
-                               ms=(murdesonastik_task.apply_async(args=(word,), task_id="murdesõnastik-"+word).get())["result"],
-                               ars=(arvutisonastik_task.apply_async(args=(word,), task_id="arvutisõnastik-"+word).get())["result"],
-                               vallaste=(vallaste_task.apply_async(args=(word,), task_id="vallaste-"+word).get())["result"],
+    user_agent = request.headers.get("User-Agent")
+
+    if "IE" in user_agent or "Googlebot" in user_agent or "YandexBot" in user_agent or "Bing" in user_agent:
+        results = {}
+        for dictionary_name, dictionary_task in dictionary_tasks.items():
+            status = 0
+            while not status == 1 or not status == -2:
+                try:
+                    result = dictionary_task.apply_async(args=(word,), task_id=dictionary_name + "-" + word).get()
+                    if len(result) > 0 and len(result["result"]) > 0:
+                        result = str(result["result"])
+                    else:
+                        result = ""
+                    results[dictionary_name] = result
+                    status = 1
+                except Exception as e:
+                    sentry.captureException(e)
+                    status -= 1
+
+        return render_template("dictionary.html",
+                               os=results["õs"],
+                               seletav=results["seletav"],
+                               wictionary=results["wictionary"],
+                               murdesonastik=results["murdesõnastik"],
+                               arvutisonastik=results["arvutisõnastik"],
+                               vallaste=results["vallaste"],
                                empty=empty,
                                word=word,
                                raven_dsn=Config.SENTRY_PUBLIC_DSN)

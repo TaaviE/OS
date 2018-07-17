@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="{{ url_for("static", filename="css/skeleton.css") }}">
     <script src="https://cdn.ravenjs.com/3.26.2/raven.min.js" crossorigin="anonymous"></script>
     {% if not empty %}
-    <title>"{{ word }}" - Sõnaraamatutes</title>
+        <title>"{{ word }}" - Sõnaraamatutes</title>
     {% else %}
-    <title>Sõnaraamatute otsingumootor</title>
+        <title>Sõnaraamatute otsingumootor</title>
     {% endif %}
     <meta id="csrf" token="{{ csrf_token() }}">
     <meta id="raven_dsn" token="{{ raven_dsn }}">
@@ -50,7 +50,11 @@
         <div>
             <div>Õigekeelsussõnaraamat:</div>
             <ul class="dictionary-content" id="õs">
-                <button id="õs-button">ÕS</button>
+                {% if os is defined %}
+                    {{ os }}
+                {% else %}
+                    <button id="õs-button">ÕS</button>
+                {% endif %}
             </ul>
             <a href="https://www.eki.ee/dict/qs/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
         </div>
@@ -58,7 +62,11 @@
         <div class="row">
             <div>Seletav sõnaraamat:</div>
             <ul class="dictionary-content" id="seletav">
-                <button id="seletav-button">Otsi</button>
+                {% if seletav is defined %}
+                    {{ seletav }}
+                {% else %}
+                    <button id="seletav-button">Otsi</button>
+                {% endif %}
             </ul>
             <a href="https://www.eki.ee/dict/ekss/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
         </div>
@@ -66,7 +74,11 @@
         <div class="row">
             <div>Wictionary:</div>
             <ul class="dictionary-content" id="wictionary">
-                <button id="wictionary-button">Otsi</button>
+                {% if wictionary is defined %}
+                    {{ wictionary }}
+                {% else %}
+                    <button id="wictionary-button">Otsi</button>
+                {% endif %}
             </ul>
             <a href="https://et.wiktionary.org/" class="copyright black" rel="nofollow">Wictionary vabatahtlikud©</a>
         </div>
@@ -74,7 +86,11 @@
         <div class="row">
             <div>Murdesõnastik:</div>
             <ul class="dictionary-content" id="murdesõnastik">
-                <button id="murdesõnastik-button">Otsi</button>
+                {% if murdesonastik is defined %}
+                    {{ murdesonastik }}
+                {% else %}
+                    <button id="murdesõnastik-button">Otsi</button>
+                {% endif %}
             </ul>
             <a href="https://www.eki.ee/dict/ems/index.cgi" class="copyright black" rel="nofollow">EKI©</a>
         </div>
@@ -82,7 +98,11 @@
         <div class="row">
             <div>Arvutisõnastik:</div>
             <ul class="dictionary-content" id="arvutisõnastik">
-                <button id="arvutisõnastik-button">Otsi</button>
+                {% if arvutisonastik is defined %}
+                    {{ arvutisonastik }}
+                {% else %}
+                    <button id="arvutisõnastik-button">Otsi</button>
+                {% endif %}
             </ul>
             <a href="http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?" class="copyright black" rel="nofollow">L.Liikane,
                 M.Kesa©</a>
@@ -91,7 +111,11 @@
         <div class="row">
             <div>Vallaste:</div>
             <ul class="dictionary-content" id="vallaste">
-                <button id="vallaste-button">Otsi</button>
+                {% if vallaste is defined %}
+                    {{ vallaste }}
+                {% else %}
+                    <button id="vallaste-button">Otsi</button>
+                {% endif %}
             </ul>
             <a href="http://vallaste.ee" class="copyright black" rel="nofollow">Heikki Vallaste©</a>
         </div>
@@ -99,7 +123,11 @@
         <div class="row">
             <div>Lukus:</div>
             <ul class="dictionary-content" id="lukus">
-                <button id="lukus-button" disabled>Lukus</button>
+                {% if lukus is defined %}
+                    {{ lukus }}
+                {% else %}
+                    <button id="lukus-button" disabled>Lukus</button>
+                {% endif %}
             </ul>
             <a href="" class="copyright black" rel="nofollow">©</a>
         </div>
