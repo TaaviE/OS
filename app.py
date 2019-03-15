@@ -71,11 +71,13 @@ sessions = {"õs": Session(),
             "murdesõnastik": Session(),
             "vallaste": Session(),
             "arvutisõnastik": Session()}
+
 for name, session in sessions.items():
     session.headers = headers
+    session.verify = True
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def os_task(self, word):
     """Task that fetches results from ÕS"""
     html = sessions["õs"].get("http://www.eki.ee/dict/qs/index.cgi?F=M&Q=" + word).content
@@ -151,10 +153,11 @@ def strip_wiki_tags(html):
 
 
 def highlight_word_in_html(html, word):
-    return str(html).replace(word, "<span class=\"highlight-word\">" + word + "</span>")
+    return str(html).replace(word, "<span class=\"highlight-word\">" + word + "</span>").replace(word.capitalize(),
+                                                                                                 "<span class=\"highlight-word\">" + word.capitalize() + "</span>")
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def seletav_task(self, word):
     """Task that fetches results from SS"""
     html = sessions["seletav"].get("https://www.eki.ee/dict/ekss/index.cgi?F=M&Q=" + word).content
@@ -181,7 +184,7 @@ def seletav_task(self, word):
     return {"progress": 100, "count": len(clean_results), "result": clean_results}
 
 
-@celery.task(bind=True, rate_limit="60/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="60/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def wictionary_task(self, word):
     """Task that fetches Wictionary"""
     count = 1
@@ -221,7 +224,7 @@ def wictionary_task(self, word):
     return {"progress": 100, "count": count, "result": result}
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=15, time_limit=20)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def murdesonastik_task(self, word):
     """Task that fetches MS"""
     html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
@@ -249,7 +252,7 @@ def murdesonastik_task(self, word):
     return {"progress": 100, "count": amount, "result": clean_results}
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def vallaste_task(self, word):
     """Task that fetches Vallaste"""
     try:
@@ -290,7 +293,7 @@ def vallaste_task(self, word):
         sentry.captureException(e)
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def arvutisonastik_task(self, word):
     """Task that fetches arvutisõnastik"""
     try:
@@ -344,24 +347,25 @@ def task_status(dictionary, task_id):
     except Exception as e:
         response = {
             "state": "ERROR",
-            "status": "Vigane päring"
+            "result": "Vigane päring"
         }
         return jsonify(response)
 
-    try:
-        task = task_function.AsyncResult(task_id)
-        result = task.get()
+    while True:
+        try:
+            task = task_function.AsyncResult(task_id)
+            result = task.get()
 
-        response = jsonify(result)
-        task.forget()
-    except Exception as e:
-        response = {
-            "state": "ERROR",
-            "status": "Vigane päring"
-        }
-        return jsonify(response)
-
-    return response
+            response = jsonify(result)
+            task.forget()
+            return response
+        except Exception as e:
+            if "concurrent poll() invocation" not in str(e):
+                response = {
+                    "state": "ERROR",
+                    "result": "Vigane päring"
+                }
+                return jsonify(response)
 
 
 @app.route("/")
@@ -375,7 +379,10 @@ def index(word=""):
     if user_agent is None:
         user_agent = "None"
 
-    if "IE" in user_agent or "Googlebot" in user_agent or "YandexBot" in user_agent or "Bing" in user_agent:
+    if "IE" in user_agent or \
+            "Googlebot" in user_agent or \
+            "YandexBot" in user_agent or \
+            "Bing" in user_agent:
         results = {}
         for dictionary_name, dictionary_task in dictionary_tasks.items():
             status = 0
