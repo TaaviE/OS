@@ -1,16 +1,6 @@
 let csrf_token;
-let dictionary_state = {
-    "õs": "EMPTY",
-    "seletav": "EMPTY",
-    "wictionary": "EMPTY",
-    "murdesõnastik": "EMPTY",
-    "vallaste": "EMPTY",
-    "arvutisõnastik": "EMPTY",
-    "lukus": "EMPTY",
-};
 
 window.onload = function () {
-    //Raven.config('https://f4d6e7fa2877472ba05d020d1d1b1947@sentry.io/1242105').install();
     Raven.config(document.getElementById("raven_dsn").getAttribute("token")).install();
     let current_word = window.location.pathname.substr(1);
 
@@ -25,12 +15,6 @@ window.onload = function () {
             };
         }
     );
-
-    if (!fetch) { // Let's fall back to get if someone is using some ancient or just a snowflake browser
-        let fallback_form = document.getElementById("fallback-form");
-        let form = document.getElementById("form");
-        form.innerHTML = fallback_form.innerHTML
-    }
 
     document.getElementById("query").onsubmit = function (event) {
         event.preventDefault();
@@ -62,16 +46,11 @@ window.onload = function () {
     if (current_word !== "") {
         onbuttonclick("õs", current_word);
         onbuttonclick("seletav", current_word);
-        if (navigator.userAgent.includes("Googlebot")) {
-            onbuttonclick("wiktionary", current_word);
-            onbuttonclick("murdesõnastik", current_word);
-            onbuttonclick("vallaste", current_word);
-            onbuttonclick("arvutisõnastik", current_word);
-        }
         document.getElementById("buttoncontainer").style.display = ""
     } else {
         document.getElementById("buttoncontainer").style.display = "none"
     }
+
 
     let report_button = document.getElementById("report");
     report_button.onclick = function () {
@@ -85,23 +64,14 @@ window.onload = function () {
 };
 
 function handle_error(error) {
-    Raven.captureException(error);
+    Raven.captureException(error, null);
     Raven.showReportDialog();
 }
 
 function reset_and_new_search(word) {
     let current_word = word;
-    history.pushState({}, "\"" + word + "\" - Sõnaraamatutes", "https://heak.ovh/" + word); // Change URL
+    history.pushState({}, "\"" + word + "\" - Sõnaraamatutes", location.protocol + "//" + document.domain + ":" + location.port + "/" + word); // Change URL
 
-    dictionary_state = { // Reset download status
-        "õs": "EMPTY",
-        "seletav": "EMPTY",
-        "wictionary": "EMPTY",
-        "murdesõnastik": "EMPTY",
-        "vallaste": "EMPTY",
-        "arvutisõnastik": "EMPTY",
-        "lukus": "EMPTY",
-    };
 
     let dictionary_content = document.getElementsByClassName("dictionary-content");
     Array.prototype.forEach.call(dictionary_content, // Reattach onclick listeners
@@ -123,59 +93,38 @@ function reset_and_new_search(word) {
     }
 }
 
-function getstatus(this_interval, task_id, dictionary) {
-    if (dictionary_state[dictionary] === "PENDING") {
-        dictionary_state[dictionary] = "DOWNLOADING";
-        fetch("/status/" + dictionary + "/" + task_id, {
-            headers: {
-                method: "GET",
-                "X-CSRFToken": csrf_token,
-            }
-        }).then(function (response) {
-            if (response.status !== 200) {
-                dictionary_state[dictionary] = "ERROR";
-                console.log("Error: " + response.status);
-                return null;
-            }
+function getstatus(task_id, dictionary) {
+    fetch("/result/" + dictionary + "/" + task_id, {
+        headers: {
+            method: "GET",
+            "X-CSRFToken": csrf_token,
+        }
+    }).then(function (response) {
+        if (response.status !== 200) {
+            console.log("Error: " + response.status);
+            return null;
+        }
 
-            response.json().then(function (data) {
-                if (data["status"] === "PENDING") {
-                    dictionary_state[dictionary] = "PENDING";
-                } else if (data["status"] === "SUCCESS") {
-                    dictionary_state[dictionary] = "SUCCESS";
-                } else if (data["status"] === "WORKING") {
-                    dictionary_state[dictionary] = "PENDING";
-                }
+        response.json().then(function (data) {
+            let result = data["result"];
+            let dictionary_content = document.getElementById(dictionary);
 
-                let result = data["state"]["result"];
-                if (result === undefined) {
-                    result = data["state"];
-                }
-                if (Array.isArray(result) && (result.length > 0)) {
-                    document.getElementById(dictionary).innerHTML = "";
-                    result.forEach(function (element) {
-                        document.getElementById(dictionary).innerHTML += "<li>" + element + "</li>";
-                    });
-                } else if (result === "" || (result.length === 0)) {
-                    document.getElementById(dictionary).innerHTML = "Sobivaid tulemusi ei leitud";
-                } else {
-                    document.getElementById(dictionary).innerHTML = result;
-                }
-                document.getElementById(dictionary).onclick = null;
-                console.log(data);
-            });
-
-            if (dictionary_state["status"] === "SUCCESS") {
-                window.clearInterval(this_interval);
+            if (Array.isArray(result) && (result.length > 0)) {
+                dictionary_content.innerHTML = "";
+                result.forEach(function (element) {
+                    dictionary_content.innerHTML += "<li>" + element + "</li>";
+                });
+            } else if (result === "" || (result !== undefined && result.length === 0)) {
+                dictionary_content.innerHTML = "Sobivaid tulemusi ei leitud";
+            } else {
+                dictionary_content.innerHTML = result;
             }
-        }).catch(function (error) {
-            console.log("Exception occured: " + error);
-            // TODO: Give up after some time, not instantly
-            window.clearInterval(this_interval);
+            document.getElementById(dictionary).onclick = null;
+            console.log(data);
         });
-    } else {
-        // Ignore
-    }
+    }).catch(function (error) {
+        console.log("Exception occured: " + error);
+    });
 }
 
 function onbuttonclick(dictionary, word) {
@@ -193,7 +142,7 @@ function onbuttonclick(dictionary, word) {
 
         response.json().then(function (data) {
             let task_id = data["task_id"];
-            registerjobstatuschecker(task_id, dictionary);
+            getstatus(task_id, dictionary);
             console.log(data);
         })
     }).catch(function (error) {
@@ -201,17 +150,3 @@ function onbuttonclick(dictionary, word) {
     });
 }
 
-function registerjobstatuschecker(task_id, dictionary) {
-    if (task_id !== null) {
-        if (dictionary_state[dictionary] === "EMPTY") {
-            setTimeout(function () {
-                let this_interval = setInterval(function () {
-                    getstatus(this_interval, task_id, dictionary);
-                }, 100);
-                dictionary_state[dictionary] = "PENDING";
-            }, 250);
-        }
-    } else {
-        console.log("Starting task failed!");
-    }
-}

@@ -18,13 +18,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import pyximport
+
 pyximport.install()
 
 from raven import Client
 from config import Config
+
 sentry = Client(Config.SENTRY_DSN)
 
-#from json import loads
+# from json import loads
 from logging import INFO
 from gensim.utils import deaccent
 from re import sub, compile
@@ -80,10 +82,6 @@ def os_task(self, word):
     # with open("./tests/data/[ÕS] Eesti õigekeelsussõnaraamat ÕS 2013-Tere.html") as file:
     #     html = file.read()
 
-    self.update_state(state="WORKING",
-                      meta={"progress": 50,
-                            "result": "Töötlen tulemust"}
-                      )
     # print(html)
     soup = BeautifulSoup(html, "html.parser")
     amount = soup.find_all("p", {"class": "inf"})
@@ -100,10 +98,6 @@ def os_task(self, word):
         amount = amount.split(" ")[2]
 
     results = soup.find_all("div", {"class": "tervikart"})
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 75,
-                            "result": "Töötlen tulemust"}
-                      )
     clean_results = eki_cleanup_html(results)
 
     return {"progress": 100, "count": amount, "result": clean_results}
@@ -173,27 +167,18 @@ def seletav_task(self, word):
                       )
     # print(html)
     soup = BeautifulSoup(html, "html.parser")
-    amount = soup.find_all("p", {"class": "inf"})[0].get_text()
-    if "Päring ei andnud tulemusi!" in amount:
-        amount = 0
-        return {"progress": 100, "count": amount, "result": []}
-    else:
-        amount = amount.split(" ")[1]
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 75,
-                            "result": "Töötlen tulemust"}
-                      )
+
     results = soup.find_all("div", {"class": "tervikart"})
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 80,
-                            "result": "Töötlen tulemust"}
-                      )
+
+    if len(results) < 1:
+        return {"progress": 100, "count": len(results), "result": []}
+
     clean_results = []
     for result in results:
         clean_results.append(
             remove_tags_and_beautify(result).replace(word, "<span class=\"highlight-word\">" + word + "</span>", 1))
 
-    return {"progress": 100, "count": amount, "result": clean_results}
+    return {"progress": 100, "count": len(clean_results), "result": clean_results}
 
 
 @celery.task(bind=True, rate_limit="60/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
@@ -222,7 +207,9 @@ def wictionary_task(self, word):
                       meta={"progress": 75,
                             "result": "Töötlen tulemust"}
                       )
-    quality = len(result.replace(word, "").replace("\n", "").replace("=", "").replace(" ", "").replace("Nimisõna", "").replace("Eesti", "").replace(" ", "").strip())  # Get rid of useless results
+    quality = len(
+        result.replace(word, "").replace("\n", "").replace("=", "").replace(" ", "").replace("Nimisõna", "").replace(
+            "Eesti", "").replace(" ", "").strip())  # Get rid of useless results
     print(quality)
     if quality < 20:
         result = []
@@ -240,10 +227,7 @@ def murdesonastik_task(self, word):
     html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
 
     soup = BeautifulSoup(html, "html.parser")
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 50,
-                            "result": "Töötlen tulemust"}
-                      )
+
     amount = soup.find_all("p", {"class": "inf"})[0].get_text()
     if "Päring ei andnud tulemusi!" in amount:
         amount = 0
@@ -253,9 +237,6 @@ def murdesonastik_task(self, word):
     results = soup.find_all("div", {"class": "tervikart"})
     clean_results = []
 
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 75,
-                            "result": "Töötlen tulemust"})
     for result in results:
         if deaccent(str(word)) in deaccent(str(result)):
             clean_results.append(highlight_word_in_html(remove_tags_and_beautify(result), word))
@@ -268,71 +249,68 @@ def murdesonastik_task(self, word):
     return {"progress": 100, "count": amount, "result": clean_results}
 
 
-@celery.task(bind=True, rate_limit="5/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
 def vallaste_task(self, word):
     """Task that fetches Vallaste"""
-    search_html = sessions["vallaste"].post("http://www.vallaste.ee/list.asp",
-                                            data={"Type": "Sona",
-                                                  "otsing": word,
-                                                  "B1": "OTSI",
-                                                  }
-                                            ).content
-    soup = BeautifulSoup(search_html, "html.parser")
-    selected_links = soup.find_all("a", {"target": "parem"}, href=True)
-    links = []
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 25,
-                            "result": "Töötlen tulemust"})
-    for link_index, link in enumerate(selected_links):
-        link = link["href"]
-        links.append(link)
-        if link_index > 5:  # Limit to five results from the site
-            break
+    try:
+        search_html = sessions["vallaste"].post("http://www.vallaste.ee/list.asp",
+                                                data={"Type": "Sona",
+                                                      "otsing": word,
+                                                      "B1": "OTSI",
+                                                      }
+                                                ).content
+        soup = BeautifulSoup(search_html, "html.parser")
+        selected_links = soup.find_all("a", {"target": "parem"}, href=True)
+        links = []
 
-    clean_result = []
-    progress = 50
-    self.update_state(state="PROGRESS",
-                      meta={"progress": progress,
-                            "result": "Töötlen tulemust"})
-    for link in links:
-        content = sessions["vallaste"].get("http://www.vallaste.ee/" + link).content
-        content = content.decode("windows-1257").replace("</b></span></br>", " - ")
-        soup = BeautifulSoup(content, "html.parser")
-        content = soup.select("body")
-        content = remove_tags_and_beautify(content)
-        content = content.replace("\n", "")
-        content = content.replace("\r", "")
-        content = content.replace("\t", "")
-        content = content.replace("[", "")
-        content = content.replace("]", "")
-        content = content.replace(word, "<span class=\"highlight-word\">" + word + "</span>", 1)
-        clean_result.append(content)
-        progress += 10
-        self.update_state(state="PROGRESS",
-                          meta={"progress": progress,
-                                "result": "Töötlen tulemust"})
+        for link_index, link in enumerate(selected_links):
+            link = link["href"]
+            links.append(link)
+            if link_index > 5:  # Limit to five results from the site
+                break
 
-    return {"progress": 100, "count": len(selected_links), "result": clean_result}
+        clean_result = []
+
+        for link in links:
+            content = sessions["vallaste"].get("http://www.vallaste.ee/" + link).content
+            content = content.decode("windows-1257").replace("</b></span></br>", " - ")
+            soup = BeautifulSoup(content, "html.parser")
+            content = soup.select("body")
+            content = remove_tags_and_beautify(content)
+            content = content.replace("\n", "")
+            content = content.replace("\r", "")
+            content = content.replace("\t", "")
+            content = content.replace("[", "")
+            content = content.replace("]", "")
+            content = content.replace(word, "<span class=\"highlight-word\">" + word + "</span>", 1)
+            clean_result.append(content)
+
+        return {"progress": 100, "count": len(selected_links), "result": clean_result}
+    except Exception as e:
+        sentry.captureException(e)
 
 
-@celery.task(bind=True, rate_limit="10/s")
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=10, time_limit=15)
 def arvutisonastik_task(self, word):
     """Task that fetches arvutisõnastik"""
-    html = sessions["arvutisõnastik"].get(
-        "http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?lang=et&word=" + word).content
-    # with open("./tests/data/L. Liikane, M. Kesa. Arvutisõnastik-Tere.html") as file:
-    #    html = file.read()
-    # print(html)
-    soup = BeautifulSoup(html, "html.parser")
-    results = soup.find_all("tr")
-    clean_results = []
-    self.update_state(state="PROGRESS",
-                      meta={"progress": 50,
-                            "result": "Töötlen tulemust"})
-    for result in results:
-        result = str(result).replace(word, "<highlight>" + word + "</highlight>", 1)
-        clean_results.append(remove_tags_and_beautify(result))
-    return {"progress": 100, "count": 0, "result": clean_results}
+    try:
+        html = sessions["arvutisõnastik"].get(
+            "http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?lang=et&word=" + word).content
+        # with open("./tests/data/L. Liikane, M. Kesa. Arvutisõnastik-Tere.html") as file:
+        #    html = file.read()
+        # print(html)
+        soup = BeautifulSoup(html, "html.parser")
+        results = soup.find_all("tr")
+        clean_results = []
+        self.update_state(state="PROGRESS",
+                          meta={"progress": 50,
+                                "result": "Töötlen tulemust"})
+        for result in results:
+            result = str(result).replace(word, "<highlight>" + word + "</highlight>", 1)
+            clean_results.append(remove_tags_and_beautify(result))
+        return {"progress": 100, "count": 0, "result": clean_results}
+    except Exception as e:
+        sentry.captureException(e)
 
 
 # This made for easier task lookup
@@ -351,53 +329,38 @@ dictionaries = dictionary_tasks.keys()
 @app.route("/start/<dictionary>/<word>", methods=["POST", "GET"])
 def dictionary_lookup(dictionary, word):
     if dictionary in dictionaries:
-        task = dictionary_tasks[dictionary].apply_async(args=(word,), task_id=dictionary+"-"+word)
+        task = dictionary_tasks[dictionary].apply_async(args=(word,), task_id=dictionary + "-" + word)
         return jsonify({"task_id": task.id})
     else:
         return jsonify({"task_id": ""})
 
 
-@app.route("/status/<dictionary>/<task_id>", methods=["POST", "GET"])
+@app.route("/result/<dictionary>/<task_id>", methods=["POST", "GET"])
 def task_status(dictionary, task_id):
     try:
+        if dictionary not in dictionary_tasks.keys():
+            raise Exception("Invalid dict")
         task_function = dictionary_tasks[dictionary]
-    except NameError:
+    except Exception as e:
         response = {
-            "state": "INVALID",
-            "status": "Invalid..."
+            "state": "ERROR",
+            "status": "Vigane päring"
         }
         return jsonify(response)
 
-    task = task_function.AsyncResult(task_id)
+    try:
+        task = task_function.AsyncResult(task_id)
+        result = task.get()
 
-    if task.state == "PENDING":
+        response = jsonify(result)
+        task.forget()
+    except Exception as e:
         response = {
-            "status": "PENDING",
-            "state": "Järjekorras"
+            "state": "ERROR",
+            "status": "Vigane päring"
         }
-    elif task.state == "SUCCESS":
-        response = {
-            "status": "SUCCESS",
-            "state": task.result
-        }
-    elif task.state == "PROGRESS":
-        response = {
-            "status": "WORKING",
-            "state": task.result
-        }
-    elif task.state == "FAILURE":
-        response = {
-            "status": "FAILURE",
-            "state": "Tekkis viga"
-        }
-    else:
-        response = {
-            "status": "ERROR",
-            "state": "Tekkis viga",
-        }
+        return jsonify(response)
 
-    response = jsonify(response)
-    task.forget()
     return response
 
 
@@ -409,6 +372,8 @@ def index(word=""):
         empty = True
 
     user_agent = request.headers.get("User-Agent")
+    if user_agent is None:
+        user_agent = "None"
 
     if "IE" in user_agent or "Googlebot" in user_agent or "YandexBot" in user_agent or "Bing" in user_agent:
         results = {}
@@ -418,14 +383,18 @@ def index(word=""):
                 try:
                     result = dictionary_task.apply_async(args=(word,), task_id=dictionary_name + "-" + word).get()
                     if len(result) > 0 and len(result["result"]) > 0:
-                        result = str(result["result"])
+                        if "Exception" not in str(result):
+                            result = str(result["result"])
+                        else:
+                            result = ""
                     else:
                         result = ""
 
                     results[dictionary_name] = result
                     status = status + 1
                 except Exception as e:
-                    sentry.captureException(e)
+                    if "SystemExit" not in str(e):
+                        sentry.captureException(e)
                     status = status - 1
 
         return render_template("dictionary.html",
@@ -447,11 +416,12 @@ def about():
     return render_template("about.html")
 
 
-#@app.after_request
-#def add_header(response):
+# @app.after_request
+# def add_header(response):
 #    response.cache_control.max_age = 31536000
 #    response.cache_control.public = True
 #    return response
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+    app.config["HOST"] = "0.0.0.0"
+    app.run()
