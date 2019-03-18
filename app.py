@@ -50,6 +50,7 @@ celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
 
 from werkzeug.contrib.fixers import ProxyFix  # Enable if you're proxying
+
 app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 
 # Initialize CSRF protection
@@ -344,7 +345,7 @@ def task_status(dictionary, task_id):
         if dictionary not in dictionary_tasks.keys():
             raise Exception("Invalid dict")
         task_function = dictionary_tasks[dictionary]
-    except Exception as e:
+    except Exception:
         response = {
             "state": "ERROR",
             "result": "Vigane päring"
@@ -379,10 +380,11 @@ def index(word=""):
     if user_agent is None:
         user_agent = "None"
 
-    if "IE" in user_agent or \
-            "Googlebot" in user_agent or \
-            "YandexBot" in user_agent or \
-            "Bing" in user_agent:
+    if not empty and \
+            ("IE" in user_agent or
+             "Googlebot" in user_agent or
+             "YandexBot" in user_agent or
+             "Bing" in user_agent):
         results = {}
         for dictionary_name, dictionary_task in dictionary_tasks.items():
             status = 0
