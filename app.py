@@ -247,7 +247,7 @@ def wictionary_task(self, word):
     return {"progress": 100, "count": count, "result": result}
 
 
-@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
+@celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=35, time_limit=45)
 def murdesonastik_task(self, word):
     """Task that fetches MS"""
     try:
@@ -422,6 +422,7 @@ def index(word=""):
              "Bing" in user_agent):
         results = {}
         for dictionary_name, dictionary_task in dictionary_tasks.items():
+            results[dictionary_name] = ""
             status = 0
             while 1 > status > -2:
                 try:
@@ -430,6 +431,7 @@ def index(word=""):
                             type(result) is dict and \
                             "result" in result.keys() and \
                             len(result["result"]) > 0:
+
                         if "Exception" not in str(result):
                             result = str(result["result"])
                         else:
