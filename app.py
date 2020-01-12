@@ -18,6 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import pyximport
+from celery.exceptions import Ignore
 
 pyximport.install()
 
@@ -32,9 +33,9 @@ from gensim.utils import deaccent
 from re import sub, compile
 from flask import Flask, jsonify, render_template, request
 from flask_wtf.csrf import CSRFProtect
-from celery import Celery
+from celery import Celery, states
 from bs4 import BeautifulSoup
-from requests import Session
+from requests import Session, exceptions
 from raven.contrib.celery import register_signal, register_logger_signal
 from raven.contrib.flask import Sentry
 
@@ -81,7 +82,14 @@ for name, session in sessions.items():
 @celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def os_task(self, word):
     """Task that fetches results from ÕS"""
-    html = sessions["õs"].get("http://www.eki.ee/dict/qs/index.cgi?F=M&Q=" + word).content
+    try:
+        html = sessions["õs"].get("http://www.eki.ee/dict/qs/index.cgi?F=M&Q=" + word).content
+    except exceptions.ConnectionError:
+        self.update_state(
+            state=states.FAILURE,
+            meta="Connection failure"
+        )
+        raise Ignore()
     # with open("./tests/data/[ÕS] Eesti õigekeelsussõnaraamat ÕS 2013-Tere.html") as file:
     #     html = file.read()
 
@@ -161,7 +169,14 @@ def highlight_word_in_html(html, word):
 @celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def seletav_task(self, word):
     """Task that fetches results from SS"""
-    html = sessions["seletav"].get("https://www.eki.ee/dict/ekss/index.cgi?F=M&Q=" + word).content
+    try:
+        html = sessions["seletav"].get("https://www.eki.ee/dict/ekss/index.cgi?F=M&Q=" + word).content
+    except exceptions.ConnectionError:
+        self.update_state(
+            state=states.FAILURE,
+            meta="Connection failure"
+        )
+        raise Ignore()
     # with open("./tests/data/[EKSS] Eesti keele seletav sõnaraamat-Tere.html") as file:
     #     html = file.read()
 
@@ -189,7 +204,14 @@ def seletav_task(self, word):
 def wictionary_task(self, word):
     """Task that fetches Wictionary"""
     count = 1
-    html = sessions["wictionary"].get("https://et.wiktionary.org/w/index.php?action=raw&title=" + word).content
+    try:
+        html = sessions["wictionary"].get("https://et.wiktionary.org/w/index.php?action=raw&title=" + word).content
+    except exceptions.ConnectionError:
+        self.update_state(
+            state=states.FAILURE,
+            meta="Connection failure"
+        )
+        raise Ignore()
     html = html.decode("utf-8")
     # with open("./tests/data/Wiktionary-Tere.html") as file:
     #     html = file.read()
@@ -228,8 +250,14 @@ def wictionary_task(self, word):
 @celery.task(bind=True, rate_limit="10/s", default_retry_delay=30, max_retries=3, soft_time_limit=25, time_limit=45)
 def murdesonastik_task(self, word):
     """Task that fetches MS"""
-    html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
-
+    try:
+        html = sessions["murdesõnastik"].get("http://www.eki.ee/dict/ems/index.cgi?F=K&Q=" + word).content
+    except exceptions.ConnectionError:
+        self.update_state(
+            state=states.FAILURE,
+            meta="Connection failure"
+        )
+        raise Ignore()
     soup = BeautifulSoup(html, "html.parser")
 
     amount = soup.find_all("p", {"class": "inf"})[0].get_text()
@@ -298,8 +326,15 @@ def vallaste_task(self, word):
 def arvutisonastik_task(self, word):
     """Task that fetches arvutisõnastik"""
     try:
-        html = sessions["arvutisõnastik"].get(
-            "http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?lang=et&word=" + word).content
+        try:
+            html = sessions["arvutisõnastik"].get(
+                "http://www.keeleveeb.ee/dict/speciality/computer/dict.cgi?lang=et&word=" + word).content
+        except exceptions.ConnectionError:
+            self.update_state(
+                state=states.FAILURE,
+                meta="Connection failure"
+            )
+            raise Ignore()
         # with open("./tests/data/L. Liikane, M. Kesa. Arvutisõnastik-Tere.html") as file:
         #    html = file.read()
         # print(html)
@@ -391,7 +426,10 @@ def index(word=""):
             while 1 > status > -2:
                 try:
                     result = dictionary_task.apply_async(args=(word,), task_id=dictionary_name + "-" + word).get()
-                    if len(result) > 0 and len(result["result"]) > 0:
+                    if len(result) > 0 and \
+                            type(result) is dict and \
+                            "result" in result.keys() and \
+                            len(result["result"]) > 0:
                         if "Exception" not in str(result):
                             result = str(result["result"])
                         else:
@@ -402,8 +440,6 @@ def index(word=""):
                     results[dictionary_name] = result
                     status = status + 1
                 except Exception as e:
-                    if "SystemExit" not in str(e):
-                        sentry.captureException(e)
                     status = status - 1
 
         return render_template("dictionary.html",
